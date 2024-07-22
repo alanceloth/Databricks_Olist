@@ -404,36 +404,6 @@ if api:
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Baixar Datasets
-
-# COMMAND ----------
-
-if dataset_info:
-    print(f"Dataset encontrado: {dataset_info.ref}")
-    # Baixar e processar o dataset no DBFS
-    download_dataset(api, KAGGLE_DATASET, DBFS_DESTINO)
-else:
-    print("Dataset não encontrado.")
-
-# COMMAND ----------
-
-arquivos = dbutils.fs.ls(DBFS_DESTINO)
-for arquivo in arquivos:
-    if arquivo.path.endswith(".csv"):
-        nome_arquivo = os.path.basename(arquivo.path)
-        path_processado = os.path.join(DBFS_PROCESSADO, nome_arquivo)
-        delta_path = os.path.join(DELTA_TABLE_PATH, nome_arquivo.replace('.csv', ''))
-        ultima_atualizacao = verificar_ultima_atualizacao(NOME_PROJETO, KAGGLE_DATASET, nome_arquivo)
-        print(f"Processando: {arquivo}")
-        processar_arquivo(arquivo.path, path_processado, delta_path, ultima_atualizacao, NOME_PROJETO, KAGGLE_DATASET, nome_arquivo)
-
-# COMMAND ----------
-
-remover_arquivos_csv(DBFS_PROCESSADO)
-
-# COMMAND ----------
-
-# MAGIC %md
 # MAGIC ## Full Load (Load Raw e Raw -> Bronze)
 
 # COMMAND ----------
