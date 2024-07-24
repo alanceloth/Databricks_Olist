@@ -53,12 +53,13 @@ df_orders_with_total.write.format("delta").mode("overwrite").option("mergeSchema
 # COMMAND ----------
 
 # MAGIC %sql
+# MAGIC CREATE OR REPLACE TEMP VIEW produtos_vendidos_por_categoria AS
 # MAGIC WITH product_counts AS (
 # MAGIC     SELECT A.product_category_name, COUNT(B.product_id) AS quantity
 # MAGIC     FROM olist_dataset.silver.olist_products AS A
 # MAGIC     LEFT JOIN olist_dataset.silver.olist_order_items AS B ON A.product_id = B.product_id
 # MAGIC     LEFT JOIN olist_dataset.silver.olist_orders O ON B.order_id = O.order_id
-# MAGIC     WHERE O.order_status IN ("delivered", "invoiced", "shipped", "approved")
+# MAGIC     WHERE O.order_status IN ('delivered', 'invoiced', 'shipped', 'approved')
 # MAGIC     GROUP BY A.product_category_name
 # MAGIC )
 # MAGIC SELECT 
@@ -69,7 +70,19 @@ df_orders_with_total.write.format("delta").mode("overwrite").option("mergeSchema
 # MAGIC     product_counts
 # MAGIC ORDER BY 
 # MAGIC     quantity DESC;
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC -- Create or replace the table from the temporary view
+# MAGIC CREATE OR REPLACE TABLE delta.`/Volumes/olist_dataset/silver/silver_volume/delta/produtos_vendidos_por_categoria` USING DELTA AS
+# MAGIC SELECT * FROM produtos_vendidos_por_categoria;
 # MAGIC
+# MAGIC CREATE OR REPLACE TABLE produtos_vendidos_por_categoria
+# MAGIC USING PARQUET
+# MAGIC LOCATION '/Volumes/olist_dataset/silver/silver_volume/parquet/produtos_vendidos_por_categoria'
+# MAGIC AS
+# MAGIC SELECT * FROM produtos_vendidos_por_categoria;
 
 # COMMAND ----------
 
@@ -79,12 +92,13 @@ df_orders_with_total.write.format("delta").mode("overwrite").option("mergeSchema
 # COMMAND ----------
 
 # MAGIC %sql
+# MAGIC -- Criando uma visualização temporária para os top 15 produtos
+# MAGIC CREATE OR REPLACE TEMP VIEW top_15_products_temp AS
 # MAGIC WITH product_counts AS (
 # MAGIC     SELECT A.product_id, COUNT(B.product_id) AS quantity
 # MAGIC     FROM olist_dataset.silver.olist_products AS A
 # MAGIC     LEFT JOIN olist_dataset.silver.olist_order_items AS B ON A.product_id = B.product_id
 # MAGIC     LEFT JOIN olist_dataset.silver.olist_orders O ON B.order_id = O.order_id
-# MAGIC     --WHERE O.order_status IN ("delivered", "invoiced", "shipped", "approved")
 # MAGIC     GROUP BY A.product_id
 # MAGIC )
 # MAGIC SELECT 
@@ -95,5 +109,17 @@ df_orders_with_total.write.format("delta").mode("overwrite").option("mergeSchema
 # MAGIC     product_counts
 # MAGIC ORDER BY 
 # MAGIC     quantity DESC
-# MAGIC     
 # MAGIC LIMIT 15;
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC -- Create or replace the table from the temporary view
+# MAGIC CREATE OR REPLACE TABLE delta.`/Volumes/olist_dataset/silver/silver_volume/delta/top_15_produtos_vendidos` USING DELTA AS
+# MAGIC SELECT * FROM top_15_products_temp
+# MAGIC
+# MAGIC CREATE OR REPLACE TABLE top_15_products_temp
+# MAGIC USING PARQUET
+# MAGIC LOCATION '/Volumes/olist_dataset/silver/silver_volume/parquet/top_15_produtos_vendidos'
+# MAGIC AS
+# MAGIC SELECT * FROM top_15_products_temp;
