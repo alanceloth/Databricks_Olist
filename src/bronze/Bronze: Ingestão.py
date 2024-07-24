@@ -1,6 +1,10 @@
 # Databricks notebook source
-# MAGIC %pip install --upgrade pip -q
-# MAGIC %pip install kaggle -q
+# MAGIC %pip install --upgrade pip --no-cache-dir
+# MAGIC %pip install -U pip
+# MAGIC try:
+# MAGIC     %pip install kaggle --no-cache-dir
+# MAGIC except:
+# MAGIC     %pip install git+https://github.com/Kaggle/kaggle-api.git@1.6.3
 # MAGIC
 # MAGIC dbutils.library.restartPython()
 # MAGIC
