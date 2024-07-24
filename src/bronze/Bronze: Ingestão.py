@@ -369,9 +369,18 @@ schemas_para_excluir = [
     "silver",
     "gold",
     "olist_dataset.bronze",
+    "olist_dataset.silver",
+    "olist_dataset.gold"
 ]
 # Descomente a linha abaixo para usar a função quando necessário
 limpar_recursos(diretorios_para_excluir, schemas_para_excluir)
+
+spark.sql(f"CREATE CATALOG IF NOT EXISTS olist_dataset")
+spark.sql(f"USE CATALOG olist_dataset")
+spark.sql(f"CREATE SCHEMA IF NOT EXISTS bronze")
+spark.sql(f"CREATE SCHEMA IF NOT EXISTS silver")
+spark.sql("CREATE VOLUME olist_dataset.silver.silver_volume")
+spark.sql(f"CREATE SCHEMA IF NOT EXISTS gold")
 
 # COMMAND ----------
 
