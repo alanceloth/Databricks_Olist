@@ -32,6 +32,10 @@ from pyspark.sql.functions import sum as spark_sum
 df_orders = spark.read.table("olist_dataset.silver.olist_orders")
 df_order_items = spark.read.table("olist_dataset.silver.olist_order_items")
 
+# Verificar se a coluna 'total_order_value' já existe na tabela de pedidos e renomear se necessário
+if 'total_order_value' in df_orders.columns:
+    df_orders = df_orders.drop('total_order_value')
+
 # Fazer a junção das tabelas
 df_joined = df_orders.join(df_order_items, df_orders["order_id"] == df_order_items["order_id"], "left")
 
@@ -42,7 +46,10 @@ df_total_order_value = df_joined.groupBy(df_orders["order_id"]).agg(spark_sum("p
 df_orders_with_total = df_orders.join(df_total_order_value, "order_id", "left")
 
 # Salvar a tabela atualizada como Delta Table
-df_orders_with_total.write.format("delta").mode("overwrite").option("mergeSchema", "true").saveAsTable("olist_dataset.silver.olist_orders")
+try:
+  df_orders_with_total.write.format("delta").mode("overwrite").option("mergeSchema", "true").saveAsTable("olist_dataset.silver.olist_orders")
+except:
+  df_orders_with_total.write.format("delta").mode("overwrite").option("overwriteSchema", "true").saveAsTable("olist_dataset.silver.olist_orders")
 
 
 # COMMAND ----------
@@ -52,37 +59,34 @@ df_orders_with_total.write.format("delta").mode("overwrite").option("mergeSchema
 
 # COMMAND ----------
 
-# MAGIC %sql
-# MAGIC CREATE OR REPLACE TEMP VIEW produtos_vendidos_por_categoria AS
-# MAGIC WITH product_counts AS (
-# MAGIC     SELECT A.product_category_name, COUNT(B.product_id) AS quantity
-# MAGIC     FROM olist_dataset.silver.olist_products AS A
-# MAGIC     LEFT JOIN olist_dataset.silver.olist_order_items AS B ON A.product_id = B.product_id
-# MAGIC     LEFT JOIN olist_dataset.silver.olist_orders O ON B.order_id = O.order_id
-# MAGIC     WHERE O.order_status IN ('delivered', 'invoiced', 'shipped', 'approved')
-# MAGIC     GROUP BY A.product_category_name
-# MAGIC )
-# MAGIC SELECT 
-# MAGIC     product_category_name, 
-# MAGIC     quantity, 
-# MAGIC     (quantity * 100.0 / SUM(quantity) OVER ()) AS percentage_of_total
-# MAGIC FROM 
-# MAGIC     product_counts
-# MAGIC ORDER BY 
-# MAGIC     quantity DESC;
+# Criar a Temp View
+query = """
+WITH product_counts AS (
+    SELECT A.product_category_name, COUNT(B.product_id) AS quantity
+    FROM olist_dataset.silver.olist_products AS A
+    LEFT JOIN olist_dataset.silver.olist_order_items AS B ON A.product_id = B.product_id
+    LEFT JOIN olist_dataset.silver.olist_orders O ON B.order_id = O.order_id
+    WHERE O.order_status IN ('delivered', 'invoiced', 'shipped', 'approved')
+    GROUP BY A.product_category_name
+)
+SELECT 
+    product_category_name, 
+    quantity, 
+    (quantity * 100.0 / SUM(quantity) OVER ()) AS percentage_of_total
+FROM 
+    product_counts
+ORDER BY 
+    quantity DESC;
+"""
 
-# COMMAND ----------
+# Carregar os dados da Temp View
+produtos_vendidos_por_categoria  = spark.sql(query)
 
-# MAGIC %sql
-# MAGIC -- Create or replace the table from the temporary view
-# MAGIC CREATE OR REPLACE TABLE delta.`/Volumes/olist_dataset/silver/silver_volume/delta/produtos_vendidos_por_categoria` USING DELTA AS
-# MAGIC SELECT * FROM produtos_vendidos_por_categoria;
-# MAGIC
-# MAGIC CREATE OR REPLACE TABLE produtos_vendidos_por_categoria
-# MAGIC USING PARQUET
-# MAGIC LOCATION '/Volumes/olist_dataset/silver/silver_volume/parquet/produtos_vendidos_por_categoria'
-# MAGIC AS
-# MAGIC SELECT * FROM produtos_vendidos_por_categoria;
+# Salvar em formato Delta
+produtos_vendidos_por_categoria .write.format("delta").mode("overwrite").save("/Volumes/olist_dataset/silver/silver_volume/delta/produtos_vendidos_por_categoria ")
+
+# Salvar em formato Parquet
+produtos_vendidos_por_categoria .write.format("parquet").mode("overwrite").save("/Volumes/olist_dataset/silver/silver_volume/parquet/produtos_vendidos_por_categoria ")
 
 # COMMAND ----------
 
@@ -91,35 +95,31 @@ df_orders_with_total.write.format("delta").mode("overwrite").option("mergeSchema
 
 # COMMAND ----------
 
-# MAGIC %sql
-# MAGIC -- Criando uma visualização temporária para os top 15 produtos
-# MAGIC CREATE OR REPLACE TEMP VIEW top_15_products_temp AS
-# MAGIC WITH product_counts AS (
-# MAGIC     SELECT A.product_id, COUNT(B.product_id) AS quantity
-# MAGIC     FROM olist_dataset.silver.olist_products AS A
-# MAGIC     LEFT JOIN olist_dataset.silver.olist_order_items AS B ON A.product_id = B.product_id
-# MAGIC     LEFT JOIN olist_dataset.silver.olist_orders O ON B.order_id = O.order_id
-# MAGIC     GROUP BY A.product_id
-# MAGIC )
-# MAGIC SELECT 
-# MAGIC     product_id, 
-# MAGIC     quantity, 
-# MAGIC     (quantity * 100.0 / SUM(quantity) OVER ()) AS percentage_of_total
-# MAGIC FROM 
-# MAGIC     product_counts
-# MAGIC ORDER BY 
-# MAGIC     quantity DESC
-# MAGIC LIMIT 15;
+# Criar a Temp View
+query = """
+WITH product_counts AS (
+    SELECT A.product_id, COUNT(B.product_id) AS quantity
+    FROM olist_dataset.silver.olist_products AS A
+    LEFT JOIN olist_dataset.silver.olist_order_items AS B ON A.product_id = B.product_id
+    LEFT JOIN olist_dataset.silver.olist_orders O ON B.order_id = O.order_id
+    GROUP BY A.product_id
+)
+SELECT 
+    product_id, 
+    quantity, 
+    (quantity * 100.0 / SUM(quantity) OVER ()) AS percentage_of_total
+FROM 
+    product_counts
+ORDER BY 
+    quantity DESC
+LIMIT 15;
+"""
 
-# COMMAND ----------
+# Carregar os dados da Temp View
+top_15_products = spark.sql(query)
 
-# MAGIC %sql
-# MAGIC -- Create or replace the table from the temporary view
-# MAGIC CREATE OR REPLACE TABLE delta.`/Volumes/olist_dataset/silver/silver_volume/delta/top_15_produtos_vendidos` USING DELTA AS
-# MAGIC SELECT * FROM top_15_products_temp
-# MAGIC
-# MAGIC CREATE OR REPLACE TABLE top_15_products_temp
-# MAGIC USING PARQUET
-# MAGIC LOCATION '/Volumes/olist_dataset/silver/silver_volume/parquet/top_15_produtos_vendidos'
-# MAGIC AS
-# MAGIC SELECT * FROM top_15_products_temp;
+# Salvar em formato Delta
+top_15_products.write.format("delta").mode("overwrite").save("/Volumes/olist_dataset/silver/silver_volume/delta/top_15_products")
+
+# Salvar em formato Parquet
+top_15_products.write.format("parquet").mode("overwrite").save("/Volumes/olist_dataset/silver/silver_volume/parquet/top_15_products")
