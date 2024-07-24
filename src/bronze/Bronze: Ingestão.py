@@ -379,7 +379,6 @@ schemas_para_excluir = [
 # Descomente a linha abaixo para usar a função quando necessário
 limpar_recursos(diretorios_para_excluir, schemas_para_excluir)
 
-spark.sql(f"CREATE CATALOG IF NOT EXISTS olist_dataset")
 spark.sql(f"USE CATALOG olist_dataset")
 spark.sql(f"CREATE SCHEMA IF NOT EXISTS bronze")
 spark.sql(f"CREATE SCHEMA IF NOT EXISTS silver")
