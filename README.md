@@ -38,6 +38,10 @@ A arquitetura medallion do Databricks é um modelo de design de dados que organi
 
 Essa abordagem em camadas permite uma melhor organização, limpeza e preparação dos dados, melhorando a eficiência do processamento e a qualidade das análises realizadas.
 
+### Workflow
+Abaixo a representação de grafos do job.
+![image](pipeline.png)
+
 ### Camada Bronze
 Demonstrado no arquivo [src/bronze/Bronze: Ingestão](https://github.com/alanceloth/Databricks_Olist/blob/main/src/bronze/Bronze%3A%20Ingest%C3%A3o.py): utilizando a API do Kaggle, foi feita a extração e carga dos dados de maneira bruta.
 O objetivo do código nesta camada é fazer um full load dos dados que estão no dataset e entregar tabelas delta com essa informação para a proxima etapa.
