@@ -331,6 +331,7 @@ GROUP BY
 ORDER BY 
     total_quantity DESC;
 ```
+![image](dashboard.png)
 
 # Contato
 - [LinkedIn](https://www.linkedin.com/in/alanlanceloth/)
