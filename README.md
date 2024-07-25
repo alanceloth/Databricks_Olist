@@ -277,6 +277,57 @@ FROM
     olist_dataset.silver.silver_olist_customers;
 ```
 
+### Dashboard
+O dashboard utilizou principalmente a camada gold para relatoria, e algumas queries personalizadas para visuais específicos.
+
+Exemplo de top 10 produtos por categoria de produto
+```sql
+WITH product_counts AS (
+    SELECT 
+        product_category_name, 
+        SUM(quantity) AS total_quantity
+    FROM 
+        olist_dataset.gold.fct_sales
+    JOIN 
+        olist_dataset.gold.dim_products 
+    ON 
+        fct_sales.product_id = dim_products.product_id
+    GROUP BY 
+        product_category_name
+),
+top_10_categories AS (
+    SELECT 
+        product_category_name
+    FROM 
+        product_counts
+    ORDER BY 
+        total_quantity DESC
+    LIMIT 10
+),
+product_counts_with_rank AS (
+    SELECT 
+        pc.product_category_name,
+        pc.total_quantity,
+        CASE 
+            WHEN t10.product_category_name IS NOT NULL THEN pc.product_category_name
+            ELSE 'OUTROS'
+        END AS category_group
+    FROM 
+        product_counts pc
+    LEFT JOIN 
+        top_10_categories t10 ON pc.product_category_name = t10.product_category_name
+)
+SELECT 
+    category_group AS product_category_name,
+    SUM(total_quantity) AS total_quantity
+FROM 
+    product_counts_with_rank
+GROUP BY 
+    category_group
+ORDER BY 
+    total_quantity DESC;
+```
+
 # Contato
 - [LinkedIn](https://www.linkedin.com/in/alanlanceloth/)
 - [GitHub](https://github.com/alanceloth/)
